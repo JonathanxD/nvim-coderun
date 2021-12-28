@@ -78,7 +78,7 @@ function M.run(rtask, ...)
 
         local found = M.find_parent(file)
         if found == nil then
-          return
+          found = { dir = nil, files = { } }
         end
 
         local root = found.dir
