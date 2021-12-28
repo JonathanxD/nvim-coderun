@@ -25,8 +25,39 @@ end)
 return require('packer').startup(function(use)
   use 'JonathanxD/nvim-coderun'
 
-  require('nvim-coderun').setup{}
+  require('nvim-coderun').setup{
+    ftypes = {
+      rust = {
+        files = { 'Cargo.toml' },
+        run = { cmd = 'cargo run' }
+      }
+    }
+  }
 end)
 ```
+
+
+```lua
+return require('packer').startup(function(use)
+  use 'JonathanxD/nvim-coderun'
+
+  require('nvim-coderun').setup{
+    ftypes = {
+      rust = {
+        files = { 'Cargo.toml' },
+        run = { 
+          cmd_function = function(attrs)
+            if next(attrs.args) == nil then
+              return 'cargo run'
+            end
+            return 'cargo run ' .. table.concat(attrs.args, ' ')
+          end          
+        }
+      }
+    }
+  }
+end)
+```
+
 
 See the help manual with `:help nvim-coderun` for more information.
