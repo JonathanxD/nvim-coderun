@@ -1,0 +1,155 @@
+*nvim-coderun.txt*       For nvim version 0.7.0+       Last change: 2021 dez 28
+================================================================================
+TABLE OF CONTENTS                                             *nvim-coderun-toc*
+
+1. Introduction                         (|nvim-coderun-intro|)
+2. Configuration                        (|nvim-coderun-config|)
+3. Usage                                (|nvim-coderun-usage|)
+
+================================================================================
+INTRODUCTION                                                *nvim-coderun-intro*
+
+`nvim-coderun` is a plugin for running projects and code in nvim, it finds
+the root directory of the current project by inspecting ancestors
+folders, starting from the current file.
+
+The command is executed using `term://` in a terminal opened in a new pane,
+this allows custom execution and REPL configuration with current file.
+
+================================================================================
+CONFIGURATION                                              *nvim-coderun-config*
+
+`nvim-coderun` provides a setup function to configure code runners, for example:
+
+>
+
+  require('nvim-coderun').setup {
+    ftypes = {
+      go = {
+        files = { 'go.mod' },
+        run = { -- Default task configuration
+          cmd = 'go run $file',
+        }
+      }
+    }
+  }
+
+<
+
+An example with `cmd_function`:
+
+>
+
+  require('nvim-coderun').setup {
+    ftypes = {
+      go = {
+        files = { 'go.mod' },
+        run = {
+          cmd_function = function(attrs)
+            return 'go run ' .. attrs.file_escape(attrs.currentFile)
+          end
+        }
+      }
+    }
+
+<
+
+The `setup{}` takes a table with the following fields:
+
+- `ftypes` `table <string, table>`
+
+  A table with file types and their configuration.
+
+- `ftypes.<filetype>` `table <string, table>`
+
+  A table with configuration for a specific file type.
+
+- `ftypes.<filetype>.files` `list[string]`
+
+  A list of files which to determine the project root,
+  a ancestor lookup is done until one of the files is found.
+
+  **Glob patterns are supported**, for example: `*.nimble`
+
+- `ftypes.<filetype>.<task>` `table <string, table>`
+
+  A table with configuration for a specific task.
+
+- `ftypes.<filetype>.run` `table <string, table>`
+
+  The default configuration to run the project,
+  when no task is specified in the command execution.
+
+- `ftypes.<filetype>.<task>.cmd` `string | nil`
+  
+  The command to run the project when the underlying
+  `<task>` is executed.
+
+  The following placeholders are available:
+
+  - `$file` The current file
+
+- `ftypes.<filetype>.<task>.cmd_function` `function(attributes)`
+
+  A function which returns the command to run the project,
+  this allow further customization of the command based
+  on the provided `attributes`.
+
+  The values provided in the `attributes` table are:
+
+  - `currentFile` `string` 
+    
+    The file opened in the current buffer.
+
+    It's important to make sure that the opened
+    buffer is not the command output buffer, otherwise
+    you will not be able to run the project.
+
+  - `root` `string`
+  
+    The root directory of the project.
+
+  - `files` `list[string]`
+    
+    A list of files that matched the `ftypes.<filetype>.files`.
+
+  - `args` `table<integer, string>`
+
+    A table with variadic arguments provided to `:CodeRun` command,
+    the first argument (task name) is not included.
+
+  - `file_escape` `function(path)`
+
+    A function which escapes paths before passing them to the
+    command.
+    This is needed for paths that contains spaces, single quotes
+    and double quotes, as they are interpreted as seperated arguments
+    when not escaped properly.
+
+    Also, it is important to note that commands that has those special
+    characters will not work properly.
+================================================================================
+USAGE                                                       *nvim-coderun-usage* 
+
+To run a project, use the `:CodeRun` command, by default it will run the
+`run` task (which is the default task), to run a specific task, provide
+an argument to the command, example: `:CodeRun release`.
+
+You can also map a key to the `:CodeRun` command, for example:
+
+>
+
+  nmap <C-r> :<c-u>CodeRun<cr>
+
+<
+
+And for custom tasks:
+
+>
+
+  nmap <C-R> :<c-u>CodeRun release<cr>
+
+<
+
+================================================================================
+
