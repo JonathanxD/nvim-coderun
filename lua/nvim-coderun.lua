@@ -79,23 +79,24 @@ function M.run(rtask, ...)
         local found = M.find_parent(file)
         local root = found.dir
         local files = found.files
-
+        local fn_attrs = {
+          currentFile = current,
+          root = root,
+          files = files,
+          args = arguments,
+          file_escape = M.escape_run_file
+        };
         if root ~= nil then
-          local cmd = attrs[task]
-          if cmd == nil then
+          local task_attrs = attrs[task]
+          local cmd = nil;
+          if task_attrs == nil then
             print("Task '" .. task .. "' not found for filetype '" .. filetype .. "' and file '" .. current .. "'")
             return
           end
-          if cmd.cmd_function ~= nil then
-            cmd = cmd.cmd_function({
-              currentFile = current,
-              root = root,
-              files = files,
-              args = arguments,
-              file_escape = M.escape_run_file
-            })
+          if task_attrs.cmd_function ~= nil then
+            cmd = task_attrs.cmd_function(fn_attrs)
           else
-            cmd = cmd.cmd
+            cmd = task_attrs.cmd
           end
           if cmd == nil then
             print("Command definition not found for task '" .. task .. "' and filetype '" .. filetype .. "'. Make sure you have a 'cmd' or 'cmd_function' (and 'cmd_function' returns command string) key in your config.")
@@ -106,6 +107,9 @@ function M.run(rtask, ...)
           local cwd = M.escape_cwd(root)
 
           vim.cmd('belowright 8split term://' .. cwd .. '/' .. cmd)
+          if task_attrs.after ~= nil then
+            task_attrs.after(fn_attrs)
+          end
           return
         end
       end
