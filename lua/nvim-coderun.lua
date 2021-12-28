@@ -97,6 +97,9 @@ function M.run(rtask, ...)
           else
             cmd = cmd.cmd
           end
+          if cmd == nil then
+            print("Command definition not found for task '" .. task .. "' and filetype '" .. filetype .. "'. Make sure you have a 'cmd' or 'cmd_function' (and 'cmd_function' returns command string) key in your config.")
+          end
 
           cmd = cmd:gsub("%$file", M.escape_run_file(current))
 
