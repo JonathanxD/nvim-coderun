@@ -77,6 +77,10 @@ function M.run(rtask, ...)
       for _, file in pairs(attrs.files) do
 
         local found = M.find_parent(file)
+        if found == nil then
+          return
+        end
+
         local root = found.dir
         local files = found.files
         local fn_attrs = {
