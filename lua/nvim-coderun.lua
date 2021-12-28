@@ -56,7 +56,7 @@ function M.escape_run_file(path)
   return path
 end
 
---- Escapes the current workdir before insertingo into 'term://' command.
+--- Escapes the current workdir before inserting into 'term://' command.
 function M.escape_cwd(path)
   -- path ends with /
   local cpath = path
