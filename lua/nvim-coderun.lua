@@ -70,7 +70,7 @@ function M.run(rtask, ...)
   local task = rtask or "run"
   local current = vim.fn.expand('%:p')
   local filetype = vim.bo.filetype
-  local arguments = ... or {}
+  local arguments = {...} or {}
 
   for name, attrs in pairs(cfg.ftypes) do
     if name == filetype then
