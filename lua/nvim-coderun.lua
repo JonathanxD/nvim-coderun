@@ -1,25 +1,19 @@
 local M = {}
 local cfg = {
-  split_size = 20,
-  split_cmd = 'split',
-  follow = true,
-  sticky_cursor = false,
+    split_size = 20,
+    split_cmd = 'split',
+    follow = true,
+    sticky_cursor = false
 }
 
 M.setup = function(config)
-  if config.follow ~= nil then
-    cfg.follow = config.follow
-  end
-  if config.sticky_cursor ~= nil then
-    cfg.stick_cursor = config.stick_cursor
-  end
-  if config.split_size then
-    cfg.split_size = config.split_size
-  end
-  if config.split_cmd then
-    cfg.split_cmd = config.split_cmd
-  end
-  cfg.ftypes = config.ftypes
+    if config.follow ~= nil then cfg.follow = config.follow end
+    if config.sticky_cursor ~= nil then
+        cfg.stick_cursor = config.stick_cursor
+    end
+    if config.split_size then cfg.split_size = config.split_size end
+    if config.split_cmd then cfg.split_cmd = config.split_cmd end
+    cfg.ftypes = config.ftypes
 end
 
 local function get_parent_directory(dir)
@@ -75,11 +69,7 @@ function M.escape_cwd(path)
 end
 
 local function first_key_in(key, ...)
-    for _, k in ipairs({...}) do
-        if k[key] ~= nil then
-            return k[key]
-        end
-    end
+    for _, k in ipairs({...}) do if k[key] ~= nil then return k[key] end end
     return nil
 end
 
@@ -134,19 +124,24 @@ function M.run(rtask, ...)
                     local cwd = M.escape_cwd(root)
 
                     local launch_config = {
-                      split_size = first_key_in('split_size', task_attrs, attrs, cfg),
-                      split_cmd = first_key_in('split_cmd', task_attrs, attrs, cfg),
-                      follow = first_key_in('follow', task_attrs, attrs, cfg),
-                      sticky_cursor = first_key_in('sticky_cursor', task_attrs, attrs, cfg),
+                        split_size = first_key_in('split_size', task_attrs,
+                                                  attrs, cfg),
+                        split_cmd = first_key_in('split_cmd', task_attrs, attrs,
+                                                 cfg),
+                        follow = first_key_in('follow', task_attrs, attrs, cfg),
+                        sticky_cursor = first_key_in('sticky_cursor',
+                                                     task_attrs, attrs, cfg)
                     }
                     if launch_config.follow then
-                      cmd = cmd .. '|$'
+                        cmd = cmd .. '|$'
                     end
                     if launch_config.sticky_cursor then
-                      cmd = cmd .. '|wincmd p'
+                        cmd = cmd .. '|wincmd p'
                     end
 
-                    vim.cmd('belowright ' .. launch_config.split_size .. launch_config.split_cmd .. ' term://' .. cwd .. '/' .. cmd)
+                    vim.cmd('belowright ' .. launch_config.split_size ..
+                                launch_config.split_cmd .. ' term://' .. cwd ..
+                                '/' .. cmd)
                     if task_attrs.after ~= nil then
                         task_attrs.after(fn_attrs)
                     end
