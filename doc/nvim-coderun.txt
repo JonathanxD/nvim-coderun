@@ -56,6 +56,24 @@ An example with `cmd_function`:
 
 The `setup{}` takes a table with the following fields:
 
+- split_size
+  
+  The size of the terminal pane, the default is 20 (was 8 in previous version).
+
+- split_cmd
+
+  The command to use to split the screen with the terminal, default is 'split' 
+  (horizontal split).
+
+- follow
+
+  Follows the terminal output, default is true.
+
+- sticky_cursor
+
+  Keeps cursor in the current buffer instead of moving to the created terminal.
+  Default is false.
+
 - `ftypes` `table <string, table>`
 
   A table with file types and their configuration.
@@ -63,6 +81,11 @@ The `setup{}` takes a table with the following fields:
 - `ftypes.<filetype>` `table <string, table>`
 
   A table with configuration for a specific file type.
+
+- `ftypes.<filetype>.<split_size|split_cmd|follow|sitcky_cursor>`
+
+  File Type specific terminal configuration. Read the initial documentation section
+  for more information.
 
 - `ftypes.<filetype>.files` `list[string]`
 
@@ -75,10 +98,17 @@ The `setup{}` takes a table with the following fields:
 
   A table with configuration for a specific task.
 
+- `ftypes.<filetype>.<task>.<split_size|split_cmd|follow|sitcky_cursor>`
+
+  Task specific terminal configuration. Read the initial documentation section
+  for more information.
+
 - `ftypes.<filetype>.run` `table <string, table>`
 
   The default configuration to run the project,
   when no task is specified in the command execution.
+
+  It has the same configuration options as any regular task.
 
 - `ftypes.<filetype>.<task>.cmd` `string | nil`
   
