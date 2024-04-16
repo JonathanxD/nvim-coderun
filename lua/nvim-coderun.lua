@@ -40,6 +40,11 @@ function M.find_parent(pattern)
     return find_dir_of_file(pattern, current)
 end
 
+function M.find_from_cwd(pattern)
+    local current = vim.fn.expand('%:p:h')
+    return find_dir_of_file(pattern, current)
+end
+
 --- Escapes a file path before inserting into the command with string replace.
 -- This is needed because 'term://' uses blank space as a delimiter for argument separation, thus
 -- file paths with spaces becomes multiple arguments instead of a single one.
@@ -73,82 +78,151 @@ local function first_key_in(key, ...)
     return nil
 end
 
+
+---@class BufOpts
+---@field split_size number
+---@field split_cmd string
+---@field follow boolean
+---@field sticky_cursor boolean
+local BufOpts = {}
+
+---@class Config
+---@field root string root directory of the project
+---@field cmd string command to run
+---@field buf BufOpts buffer options
+local Config = {}
+
+---@param config Config
+function M.spawn_cmd(config)
+    local root = config.root
+    local cmd = config.cmd
+    local cwd = M.escape_cwd(root)
+
+    if config.buf.follow then
+        cmd = cmd .. '|$'
+    end
+    if config.buf.sticky_cursor then
+        cmd = cmd .. '|wincmd p'
+    end
+
+    vim.cmd('belowright ' .. config.buf.split_size ..
+                config.buf.split_cmd .. ' term://' .. cwd ..
+                '/' .. cmd)
+end
+
 function M.run(rtask, ...)
     local task = rtask or "run"
     local current = vim.fn.expand('%:p')
     local filetype = vim.bo.filetype
     local arguments = {...} or {}
 
-    for name, attrs in pairs(cfg.ftypes) do
+    for name, tld_attrs in pairs(cfg.ftypes) do
         if name == filetype then
-            for _, file in pairs(attrs.files) do
-
-                local found = M.find_parent(file)
-                if found == nil then
-                    found = {dir = nil, files = {}}
+            local tld_files = tld_attrs.files
+            if tld_files ~= nil then
+                tld_files = { tld_attrs }
+            else
+                tld_files = tld_attrs
+            end
+            local tld_files_count = #tld_files
+            for i_attrs, attrs in ipairs(tld_files) do
+                local is_last = i_attrs == tld_files_count
+                local is_cwd = false
+                for key, file in pairs(attrs.files) do
+                    if key == "cwd" and file then
+                        is_cwd = true
+                        break
+                    end
                 end
+                for key, file in pairs(attrs.files) do
+                    if key == "cwd" then
+                        goto continue
+                    end
 
-                local root = found.dir
-                local files = found.files
-                local fn_attrs = {
-                    currentFile = current,
-                    root = root,
-                    files = files,
-                    args = arguments,
-                    file_escape = M.escape_run_file
-                };
-                if root ~= nil then
-                    local task_attrs = attrs[task]
-                    local cmd = nil;
-                    if task_attrs == nil then
-                        print(
-                            "Task '" .. task .. "' not found for filetype '" ..
-                                filetype .. "' and file '" .. current .. "'")
+                    local pattern = file
+                    local resolv = function()
+                        M.find_parent(pattern)
+                    end
+                    if is_cwd then
+                        resolv = function()
+                            return M.find_from_cwd(pattern)
+                        end
+                    end
+                    local found = resolv()
+                    if found == nil then
+                        found = {dir = nil, files = {}}
+                    end
+
+                    local root = found.dir
+                    local files = found.files
+                    local fn_attrs = {
+                        currentFile = current,
+                        root = root,
+                        files = files,
+                        args = arguments,
+                        file_escape = M.escape_run_file
+                    };
+
+                    if root ~= nil then
+                        local task_attrs = attrs[task]
+                        local cmd = nil;
+                        if task_attrs == nil then
+                            if not is_last then
+                                goto continue
+                            end
+                            print(
+                                "Task '" .. task .. "' not found for filetype '" ..
+                                    filetype .. "' and file '" .. current .. "'")
+                            return
+                        end
+                        if task_attrs.cmd_function ~= nil then
+                            cmd = task_attrs.cmd_function(fn_attrs)
+                        else
+                            cmd = task_attrs.cmd
+                        end
+                        if cmd == nil then
+                            if not is_last then
+                                goto continue
+                            end
+                            print(
+                                "Command definition not found for task '" .. task ..
+                                    "' and filetype '" .. filetype ..
+                                    "'. Make sure you have a 'cmd' or 'cmd_function' (and 'cmd_function' returns command string) key in your config.")
+                            return
+                        end
+
+                        cmd = cmd:gsub("%$file", M.escape_run_file(current))
+
+                        local cwd = M.escape_cwd(root)
+
+                        local launch_config = {
+                            split_size = first_key_in('split_size', task_attrs,
+                                                      attrs, cfg),
+                            split_cmd = first_key_in('split_cmd', task_attrs, attrs,
+                                                     cfg),
+                            follow = first_key_in('follow', task_attrs, attrs, cfg),
+                            sticky_cursor = first_key_in('sticky_cursor',
+                                                         task_attrs, attrs, cfg)
+                        }
+                        if launch_config.follow then
+                            cmd = cmd .. '|$'
+                        end
+                        if launch_config.sticky_cursor then
+                            cmd = cmd .. '|wincmd p'
+                        end
+
+                        vim.cmd('belowright ' .. launch_config.split_size ..
+                                    launch_config.split_cmd .. ' term://' .. cwd ..
+                                    '/' .. cmd)
+                        if task_attrs.after ~= nil then
+                            task_attrs.after(fn_attrs)
+                        end
                         return
                     end
-                    if task_attrs.cmd_function ~= nil then
-                        cmd = task_attrs.cmd_function(fn_attrs)
-                    else
-                        cmd = task_attrs.cmd
-                    end
-                    if cmd == nil then
-                        print(
-                            "Command definition not found for task '" .. task ..
-                                "' and filetype '" .. filetype ..
-                                "'. Make sure you have a 'cmd' or 'cmd_function' (and 'cmd_function' returns command string) key in your config.")
-                        return
-                    end
-
-                    cmd = cmd:gsub("%$file", M.escape_run_file(current))
-
-                    local cwd = M.escape_cwd(root)
-
-                    local launch_config = {
-                        split_size = first_key_in('split_size', task_attrs,
-                                                  attrs, cfg),
-                        split_cmd = first_key_in('split_cmd', task_attrs, attrs,
-                                                 cfg),
-                        follow = first_key_in('follow', task_attrs, attrs, cfg),
-                        sticky_cursor = first_key_in('sticky_cursor',
-                                                     task_attrs, attrs, cfg)
-                    }
-                    if launch_config.follow then
-                        cmd = cmd .. '|$'
-                    end
-                    if launch_config.sticky_cursor then
-                        cmd = cmd .. '|wincmd p'
-                    end
-
-                    vim.cmd('belowright ' .. launch_config.split_size ..
-                                launch_config.split_cmd .. ' term://' .. cwd ..
-                                '/' .. cmd)
-                    if task_attrs.after ~= nil then
-                        task_attrs.after(fn_attrs)
-                    end
-                    return
+                    ::continue::
                 end
             end
-        end
+       end
     end
     print('No run configuration found for filetype \'' .. filetype ..
               '\' and file \'' .. current .. '\'')
