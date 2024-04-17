@@ -74,6 +74,11 @@ The `setup{}` takes a table with the following fields:
   Keeps cursor in the current buffer instead of moving to the created terminal.
   Default is false.
 
+- windowed
+
+  Opens the terminal in a floating window, default is false. This is the
+  recommended mode for new users as it's less problematic than the default.
+
 - `ftypes` `table <string, table>`
 
   A table with file types and their configuration.
@@ -169,7 +174,7 @@ You can also map a key to the `:CodeRun` command, for example:
 
 >
 
-  nmap <C-r> :<c-u>CodeRun<cr>
+  nmap <C-e> :<c-u>CodeRun<cr>
 
 <
 
@@ -177,7 +182,7 @@ And for custom tasks:
 
 >
 
-  nmap <C-R> :<c-u>CodeRun release<cr>
+  nmap <C-E> :<c-u>CodeRun release<cr>
 
 <
 

@@ -59,5 +59,22 @@ return require('packer').startup(function(use)
 end)
 ```
 
+### Windowed mode
+
+If you want a new window to be opened instead of a hsplit, you can set `windowed = true`:
+
+```lua
+return require('packer').startup(function(use)
+  use 'JonathanxD/nvim-coderun'
+
+  require('nvim-coderun').setup {
+    windowed = true,
+  }
+end)
+````
+
+This is currently the recommended mode to be used, as it is less problematic than the hsplit mode.
+
+## More info
 
 See the help manual with `:help nvim-coderun` for more information.
