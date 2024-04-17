@@ -1,9 +1,18 @@
 local M = {}
+
+---@class UserConfig
+---@field follow boolean|nil
+---@field sticky_cursor boolean|nil
+---@field split_size number|nil
+---@field split_cmd string|nil
+---@field windowed boolean|nil
+---@field ftypes table<string, FTypeConfig>
 local cfg = {
     split_size = 20,
     split_cmd = 'split',
     follow = true,
-    sticky_cursor = false
+    sticky_cursor = false,
+    windowed = false,
 }
 
 M.setup = function(config)
@@ -13,6 +22,7 @@ M.setup = function(config)
     end
     if config.split_size then cfg.split_size = config.split_size end
     if config.split_cmd then cfg.split_cmd = config.split_cmd end
+    if config.windowed then cfg.windowed = config.windowed end
     cfg.ftypes = config.ftypes
 end
 
@@ -80,10 +90,10 @@ end
 
 
 ---@class BufOpts
----@field split_size number
----@field split_cmd string
----@field follow boolean
----@field sticky_cursor boolean
+---@field split_size number|nil
+---@field split_cmd string|nil
+---@field follow boolean|nil
+---@field sticky_cursor boolean|nil
 local BufOpts = {}
 
 ---@class Config
@@ -93,21 +103,73 @@ local BufOpts = {}
 local Config = {}
 
 ---@param config Config
-function M.spawn_cmd(config)
+function M.create_cmd(config)
     local root = config.root
     local cmd = config.cmd
     local cwd = M.escape_cwd(root)
+    local append_mode = config.buf.split_cmd ~= nil
+    cmd = 'term://' .. cwd .. '/' .. cmd
 
-    if config.buf.follow then
-        cmd = cmd .. '|$'
-    end
-    if config.buf.sticky_cursor then
-        cmd = cmd .. '|wincmd p'
+    if config.buf.split_cmd then
+        cmd = config.buf.split_cmd .. ' ' .. cmd
     end
 
-    vim.cmd('belowright ' .. config.buf.split_size ..
-                config.buf.split_cmd .. ' term://' .. cwd ..
-                '/' .. cmd)
+    if config.buf.split_size and config.buf.split_cmd then
+        cmd = config.buf.split_size .. cmd
+    end
+
+    if append_mode then
+        if config.buf.follow then
+            cmd = cmd .. '|$'
+        end
+        if config.buf.sticky_cursor then
+            cmd = cmd .. '|wincmd p'
+        end
+    end
+
+    return cmd
+end
+
+---@param config Config
+function M.spawn_cmd(config)
+    local cmd = M.create_cmd(config)
+    cmd = 'belowright ' .. cmd
+    vim.cmd(cmd)
+end
+
+local coderun_buf = vim.api.nvim_create_buf(false, true)
+
+---@param config Config
+function M.spawn_cmd_floating(config)
+    local ui = vim.api.nvim_list_uis()[1]
+    local width = math.floor(ui.width * 0.70)
+    local height = math.floor(ui.height * 0.70)
+    local win_id = vim.api.nvim_open_win(coderun_buf, true, {
+        relative = 'editor',
+        width = width,
+        height = height,
+        row = math.floor((ui.height - height) / 2),
+        col = math.floor((ui.width - width) / 2),
+        style = 'minimal',
+        border = 'single',
+    })
+    vim.api.nvim_win_set_option(win_id, 'winhl', 'Normal:Normal')
+
+    ---@type Config
+    config = {
+        root = config.root,
+        cmd = config.cmd,
+        buf = {
+            split_size = nil,
+            split_cmd = 'edit',
+            follow = config.buf.follow,
+            sticky_cursor = config.buf.sticky_cursor
+        }
+    }
+    local cmd = M.create_cmd(config)
+    vim.print(cmd)
+    vim.cmd(cmd)
+    --vim.api.nvim_command(cmd)
 end
 
 function M.run(rtask, ...)
@@ -141,7 +203,7 @@ function M.run(rtask, ...)
 
                     local pattern = file
                     local resolv = function()
-                        M.find_parent(pattern)
+                        return M.find_parent(pattern)
                     end
                     if is_cwd then
                         resolv = function()
@@ -195,6 +257,7 @@ function M.run(rtask, ...)
 
                         local cwd = M.escape_cwd(root)
 
+                        ---@type BufOpts
                         local launch_config = {
                             split_size = first_key_in('split_size', task_attrs,
                                                       attrs, cfg),
@@ -204,16 +267,18 @@ function M.run(rtask, ...)
                             sticky_cursor = first_key_in('sticky_cursor',
                                                          task_attrs, attrs, cfg)
                         }
-                        if launch_config.follow then
-                            cmd = cmd .. '|$'
-                        end
-                        if launch_config.sticky_cursor then
-                            cmd = cmd .. '|wincmd p'
-                        end
 
-                        vim.cmd('belowright ' .. launch_config.split_size ..
-                                    launch_config.split_cmd .. ' term://' .. cwd ..
-                                    '/' .. cmd)
+                        ---@type Config
+                        local config = {
+                            root = root,
+                            cmd = cmd,
+                            buf = launch_config
+                        }
+                        if cfg.windowed then
+                            M.spawn_cmd_floating(config)
+                        else
+                            M.spawn_cmd(config)
+                        end
                         if task_attrs.after ~= nil then
                             task_attrs.after(fn_attrs)
                         end
