@@ -167,9 +167,7 @@ function M.spawn_cmd_floating(config)
         }
     }
     local cmd = M.create_cmd(config)
-    vim.print(cmd)
     vim.cmd(cmd)
-    --vim.api.nvim_command(cmd)
 end
 
 function M.run(rtask, ...)
